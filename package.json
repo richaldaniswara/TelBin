@@ -38,6 +38,7 @@
 		"vite": "^7.1.10"
 	},
 	"dependencies": {
-		"daisyui": "^5.4.7"
+		"daisyui": "^5.4.7",
+		"firebase": "^12.6.0"
 	}
 }
