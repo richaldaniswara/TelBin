@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { Mail, Lock, Recycle } from "lucide-react";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
-
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase";
+import { createUserIfNotExists } from "../services/userService";
 interface LoginRegisterProps {
   onLogin: () => void;
 }
@@ -51,6 +53,7 @@ export default function LoginRegister({ onLogin }: LoginRegisterProps) {
 
     try {
       await signInWithPopup(auth, googleProvider);
+      await createUserIfNotExists();
       onLogin();
     } catch (error: any) {
       if (error.code === "auth/popup-closed-by-user") {
