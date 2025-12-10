@@ -10,7 +10,12 @@ import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/fire
 interface HistoryItem {
   type: string;
 }
-
+interface Medal {
+  medalID: string;
+  name: string;
+  emoji: string;
+  minPoints: number;
+}
 interface UserData {
   userId: string;
   email: string;
@@ -24,6 +29,8 @@ interface UserData {
 
 export default function Profile({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
+  const [allMedals, setMedals] = useState<Medal[]>([]);
+
   const [userData, setUserData] = useState<UserData | null>(null);
 
   const [editingField, setEditingField] = useState<null | 'fullName' | 'nim' | 'phoneNumber'>(null);
@@ -47,6 +54,29 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
 
     fetchUser();
   }, []);
+
+  useEffect(() => {
+    const fetchMedals = async () => {
+      const snapshot = await getDocs(collection(db, 'Medal'));
+      const data = snapshot.docs.map(doc => doc.data() as Medal);
+
+      const formatted = data
+      .sort((a, b) => a.minPoints - b.minPoints)
+      .map((m) => ({
+        medalID: m.medalID,
+        emoji: m.emoji,
+        title: m.name,
+        points: m.minPoints,
+        bgColor: 'bg-gray-50',
+        borderColor: 'border-gray-200'
+      }));
+
+      setMedals(formatted);
+    };
+
+    fetchMedals();
+  }, []);
+
 
   const handleSave = async () => {
     if (!editingField || !userDocId) return;
@@ -98,20 +128,10 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
   }, {} as { [key: string]: number });
 
   const mostScanned = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
-  const currentMedalLevel = Math.floor(userPoints / 1000);
+  const currentMedalLevel = allMedals.filter(m => userPoints >= m.points).length;  
 
-  const allMedals = [
-    { level: 0, emoji: '🗑️', title: 'Iron Eco Champion', points: 0, bgColor: 'bg-zinc-50', borderColor: 'border-zinc-200' },
-    { level: 1, emoji: '🥉', title: 'Bronze Eco Champion', points: 1000, bgColor: 'bg-amber-50', borderColor: 'border-amber-200' },
-    { level: 2, emoji: '🥈', title: 'Silver Eco Champion', points: 2000, bgColor: 'bg-gray-50', borderColor: 'border-gray-200' },
-    { level: 3, emoji: '🥇', title: 'Gold Eco Champion', points: 3000, bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200' },
-    { level: 4, emoji: '💎', title: 'Platinum Eco Champion', points: 4000, bgColor: 'bg-cyan-50', borderColor: 'border-cyan-200' },
-    { level: 5, emoji: '🏆', title: 'Diamond Eco Champion', points: 5000, bgColor: 'bg-purple-50', borderColor: 'border-purple-200' }
-  ];
-
-  const highestMedal = [...allMedals]
-  .reverse()
-  .find(medal => userPoints >= medal.points) || allMedals[0];
+  const highestMedal =
+  [...allMedals].reverse().find(m => userPoints >= m.points) || allMedals[0];
 
   const menuItems = [
     { icon: Shield, label: 'Privacy Policy', action: () => {} },
@@ -161,9 +181,11 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
             <div className="text-[#34A853]">{totalReports}</div>
             <p className="text-gray-500">Reports</p>
           </div>
-          <div className={`rounded-2xl p-4 text-center shadow-sm border-2 ${highestMedal.borderColor} ${highestMedal.bgColor}`}>
-            <div className="text-3xl mb-1">{highestMedal.emoji}</div>
-            <p className="text-gray-700 text-sm">{highestMedal.title.split(' ')[0]}</p>
+          <div className="rounded-2xl p-4 text-center shadow-sm border-2 border-gray-200 bg-gray-50">
+            <div className="text-3xl mb-1">{highestMedal?.emoji}</div>
+            <p className="text-gray-700 text-sm">
+              {highestMedal?.name}
+            </p>
           </div>
           <div className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100">
             <div className="text-[#34A853]">{userPoints}</div>
@@ -180,7 +202,7 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
 
           <div className="grid grid-cols-2 gap-3">
             {allMedals.map((medal) => {
-              const isEarned = currentMedalLevel >= medal.level;
+              const isEarned = userPoints >= medal.points;
 
               return (
                 <div key={medal.level}
