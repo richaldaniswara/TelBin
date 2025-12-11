@@ -8,7 +8,7 @@ export async function awardMedalToUser(userDocId: string, medal: any) {
     const userRef = doc(db, "User", userDocId);
 
     await updateDoc(userRef, {
-      Medals: arrayUnion({
+      medals: arrayUnion({
         medalID: medal.medalID,   // Firestore document ID
         name: medal.name,
         emoji: medal.emoji,

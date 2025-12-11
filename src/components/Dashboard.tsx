@@ -2,38 +2,38 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Award, Lightbulb } from 'lucide-react';
 import { auth, db } from '../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-
-interface Scan {
-  id: number;
-  image: string;
-  category: string;
-  confidence: number;
-  points: number;
-  timestamp: Date;
-  type: string;
+import { collection, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
+interface Report {
+  submissionId: string;
+  trashClass: string;
+  location: string;
+  timestampISO: string;  // ✔ Firestore field
+  proofUrl: string;      // ✔ your field
+  scannedTrash: string;
+  userFullName: string;
+  highestMedal?: any;
+  points?: number;
 }
 
-interface DashboardProps {
-  userPoints: number;
-  scanHistory: Scan[];
-}
-
-export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
+export default function Dashboard() {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [totalPoints, setTotalPoints] = useState(0);
+  const [recentReports, setRecentReports] = useState<Report[]>([]);
 
-  const formatTime = (timestamp: string | Date) => {
-    const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  const formatTime = (timestampISO: string | Date) => {
+    const date = timestampISO instanceof Date ? timestampISO : new Date(timestampISO);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
     if (days > 0) return `${days}d ago`;
     if (hours > 0) return `${hours}h ago`;
-    return 'Just now';
+    if (minutes > 0) return `${minutes}m ago`;
+    return "Just now";
   };
 
   const tips = [
@@ -43,7 +43,6 @@ export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
     'Check local guidelines for e-waste disposal',
     'Organic waste can be composted at home'
   ];
-
   const randomTip = tips[Math.floor(Math.random() * tips.length)];
 
   useEffect(() => {
@@ -61,7 +60,25 @@ export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
       }
     };
 
+    const fetchRecentReports = async () => {
+      const reportsQuery = query(
+        collection(db, "Report"),
+        orderBy("timestampISO", "desc"),   // ✔ FIXED
+        limit(5)
+      );
+
+      const snapshot = await getDocs(reportsQuery);
+
+      const reports: Report[] = snapshot.docs.map(doc => ({
+        submissionId: doc.data().submissionId,  // ✔ use your field
+        ...doc.data()
+      }) as Report);
+
+      setRecentReports(reports);
+    };
+
     fetchUser();
+    fetchRecentReports();
   }, []);
 
   return (
@@ -118,7 +135,7 @@ export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
         </div>
 
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-800">Recent Classifications</h2>
+          <h2 className="text-gray-800">Recent Reports</h2>
           <button
             onClick={() => navigate('/history')}
             className="text-[#34A853]"
@@ -127,30 +144,43 @@ export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
           </button>
         </div>
 
-        {scanHistory.length === 0 ? (
+        {recentReports.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🔍</div>
-            <p className="text-gray-400">No scans yet</p>
+            <p className="text-gray-400">No reports yet</p>
             <p className="text-gray-400">Start by scanning your first item!</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {scanHistory.slice(0, 3).map((scan) => (
+            {recentReports.map((report) => (
               <div
-                key={scan.id}
+                key={report.submissionId}
                 className="bg-white border-2 border-gray-100 rounded-2xl p-4 flex gap-4 items-center hover:border-green-200 transition-colors"
               >
                 <img
-                  src={scan.image}
-                  alt={scan.category}
+                  src={report.scannedTrash || report.proofUrl}
+                  alt={report.trashClass}
                   className="w-16 h-16 rounded-xl object-cover"
                 />
+
                 <div className="flex-1">
-                  <h3 className="text-gray-800">{scan.category}</h3>
-                  <p className="text-gray-500">Confidence: {scan.confidence}%</p>
-                  <p className="text-gray-400">{formatTime(scan.timestamp)}</p>
+                  <h3 className="text-gray-800">{report.trashClass}</h3>
+                  <p className="text-gray-500">By: {report.userFullName}</p>
+
+                  {report.highestMedal && (
+                    <p className="text-gray-500">
+                      {report.highestMedal.emoji ?? ""} {report.highestMedal.name}
+                    </p>
+                  )}
+
+                  <p className="text-gray-400">
+                    {formatTime(report.timestampISO)}
+                  </p>
                 </div>
-                <div className="text-[#34A853]">+{scan.points}</div>
+
+                {report.points && (
+                  <div className="text-[#34A853]">+{report.points}</div>
+                )}
               </div>
             ))}
           </div>

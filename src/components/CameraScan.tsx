@@ -376,11 +376,12 @@ async function validateProofWithTrashDetection(file: File, imageUrl: string) {
         const submissionData = {
           trashClass: result.category,
           location: location,
-          timestamp: scanDateTime.toLocaleString(),
+          timestampString: scanDateTime.toLocaleString(),
           proofUrl: proofOfCleaning,
           userId: user?.uid,
           submissionId: docRef.id,
           scannedTrash: capturedImage,
+          timestampISO: scanDateTime.toISOString()
         };
 
         await setDoc(docRef, submissionData);
@@ -394,15 +395,29 @@ async function validateProofWithTrashDetection(file: File, imageUrl: string) {
           const userDoc = snapshot.docs[0];
           const userData = userDoc.data();
           const currentPoints = userDoc.data().totalPoints || 0;
-          const currentHistory = userData.History || [];
-
+          const currentHistory = userData.history || [];
           await updateDoc(userDoc.ref, {
             totalPoints: currentPoints + 10,
             history: [...currentHistory, submissionData]
           });
+
+          // Determine highest medal (if user has medals array)
+          const highestMedal =
+            userData.medals && userData.medals.length > 0
+              ? userData.medals[userData.medals.length - 1] // last item = highest medal
+              : null;
+
+          // Save to Reports collection
+          const reportData = {
+            ...submissionData,
+            userFullName: userData.fullName || "Unknown",
+            highestMedal: highestMedal || null,
+          };
+
+          await addDoc(collection(db, "Report"), reportData);
         }
 
-        onScanComplete(submissionData);
+        onScanComplete?.(submissionData);
 
         navigate("/");
 
