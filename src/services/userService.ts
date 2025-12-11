@@ -32,6 +32,22 @@ export const createUserIfNotExists = async () => {
     return;
   }
 
+  const medalQuery = query(
+    collection(db, "Medal"),
+    where("minPoints", "==", 0)
+  );
+
+  const medalSnapshot = await getDocs(medalQuery);
+
+  if (medalSnapshot.empty) {
+    console.error("Iron medal not found in Medal collection.");
+    return;
+  }
+
+  const ironMedalDoc = medalSnapshot.docs[0];
+  const ironMedalData = ironMedalDoc.data();
+  const ironMedalFirestoreID = ironMedalDoc.id;
+
   const userIdRef = doc(collection(db, "User"));
 
   await setDoc(userIdRef, {
@@ -41,7 +57,14 @@ export const createUserIfNotExists = async () => {
     fullName: "Update your name",
     phoneNumber: "Update your phone number",
     createdAt: serverTimestamp(),
-    Medals: [],
+    Medals: [
+      {
+        medalID: ironMedalFirestoreID,      // ⭐ Firestore Document ID
+        name: ironMedalData.name,
+        emoji: ironMedalData.emoji,
+        minPoints: ironMedalData.minPoints,
+      },
+    ],
     History: [],
     totalPoints: 0,
   });

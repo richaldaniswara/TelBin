@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Award, Lightbulb } from 'lucide-react';
+import { auth, db } from '../firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 interface Scan {
   id: number;
@@ -19,6 +21,8 @@ interface DashboardProps {
 
 export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
   const navigate = useNavigate();
+  const [fullName, setFullName] = useState("");
+  const [totalPoints, setTotalPoints] = useState(0);
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -41,12 +45,32 @@ export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
 
   const randomTip = tips[Math.floor(Math.random() * tips.length)];
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = auth.currentUser;
+      if (!user || !user.email) return;
+
+      const q = query(collection(db, "User"), where("email", "==", user.email));
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data();
+        setFullName(data.fullName);
+        setTotalPoints(data.totalPoints);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       <div className="bg-gradient-to-b from-green-50 to-white px-6 pt-12 pb-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-gray-800">Hello, Eco Warrior!</h1>
+            <h1 className="text-gray-800">
+              Hello, {(!fullName || fullName === "Update your name") ? "Eco Warrior" : fullName}!
+            </h1>
             <p className="text-gray-500">Let's make Earth cleaner today</p>
           </div>
           <button
@@ -63,7 +87,7 @@ export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
               <p className="text-gray-500 mb-1">Your Points</p>
               <div className="flex items-center gap-2">
                 <Award className="w-8 h-8 text-[#34A853]" />
-                <span className="text-[#34A853]">{userPoints}</span>
+                <span className="text-[#34A853]">{totalPoints}</span>
               </div>
             </div>
             <button

@@ -6,6 +6,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { awardMedalToUser } from '../services/awardMedal';
 
 interface HistoryItem {
   type: string;
@@ -57,27 +58,43 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     const fetchMedals = async () => {
-      const snapshot = await getDocs(collection(db, 'Medal'));
-      const data = snapshot.docs.map(doc => doc.data() as Medal);
+      const snapshot = await getDocs(collection(db, "Medal"));
+      const list: Medal[] = snapshot.docs.map(doc => ({
+        medalID: doc.id,
+        ...doc.data(),
+      })) as Medal[];
 
-      const formatted = data
-      .sort((a, b) => a.minPoints - b.minPoints)
-      .map((m) => ({
-        medalID: m.medalID,
-        emoji: m.emoji,
-        title: m.name,
-        points: m.minPoints,
-        bgColor: 'bg-gray-50',
-        borderColor: 'border-gray-200'
-      }));
-
-      setMedals(formatted);
+      list.sort((a, b) => a.minPoints - b.minPoints);
+      setMedals(list);
     };
 
     fetchMedals();
   }, []);
 
+  useEffect(() => {
+    if (!userData || allMedals.length === 0) return;
 
+    const alreadyOwned = userData.Medals.map(m => m.medalID);
+
+    // Find medals user has reached but not yet earned
+    const newlyEarned = allMedals.filter(m =>
+      userData.totalPoints >= m.minPoints && !alreadyOwned.includes(m.medalID)
+    );
+
+    if (newlyEarned.length > 0) {
+      newlyEarned.forEach(async (medal) => {
+        await awardMedalToUser(userDocId, medal);
+
+        // Update local state UI immediately
+        setUserData(prev =>
+          prev
+            ? { ...prev, Medals: [...prev.Medals, medal] }
+            : prev
+        );
+      });
+    }
+  }, [userData, allMedals]);
+  
   const handleSave = async () => {
     if (!editingField || !userDocId) return;
 
@@ -128,10 +145,10 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
   }, {} as { [key: string]: number });
 
   const mostScanned = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
-  const currentMedalLevel = allMedals.filter(m => userPoints >= m.points).length;  
+  const currentMedalLevel = allMedals.filter(m => userPoints >= m.minPoints).length;  
 
   const highestMedal =
-  [...allMedals].reverse().find(m => userPoints >= m.points) || allMedals[0];
+  [...allMedals].reverse().find(m => userPoints >= m.minPoints) || allMedals[0];
 
   const menuItems = [
     { icon: Shield, label: 'Privacy Policy', action: () => {} },
@@ -202,7 +219,7 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
 
           <div className="grid grid-cols-2 gap-3">
             {allMedals.map((medal) => {
-              const isEarned = userPoints >= medal.points;
+              const isEarned = userPoints >= medal.minPoints;
 
               return (
                 <div key={medal.level}
@@ -219,8 +236,8 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
                       </div>
                     )}
                   </div>
-                  <p className="text-xs">{medal.title}</p>
-                  <p className="text-xs">{isEarned ? '✓ Unlocked' : `${medal.points} pts`}</p>
+                  <p className="text-xs">{medal.name}</p>
+                  <p className="text-xs">{isEarned ? '✓ Unlocked' : `${medal.minPoints} pts`}</p>
                 </div>
               );
             })}
