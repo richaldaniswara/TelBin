@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera, RotateCcw, Save, ArrowLeft, MapPin, Check } from "lucide-react";
+import { db } from "../firebase"; 
+import { addDoc, setDoc, updateDoc, increment } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { doc } from "firebase/firestore";
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 interface CameraScanProps {
   onScanComplete: (scan: any) => void;
@@ -125,9 +130,6 @@ export default function CameraScan({ onScanComplete }: CameraScanProps) {
     setScanDateTime(new Date());
   }, [result]);
 
-  // =============================
-  // LOCATION FUNCTIONS
-  // =============================
   const handleGetLocation = () => {
     setIsGettingLocation(true);
     if ("geolocation" in navigator) {
@@ -261,7 +263,7 @@ async function validateProofWithTrashDetection(file: File, imageUrl: string) {
     setProofFeedback("✗ Error validating proof. Try again.");
   }
 
-  setTimeout(() => setProofFeedback(""), 3000);
+  setTimeout(() => setProofFeedback(""), 10000);
   setProofAnalyzing(false);
 }
 
@@ -363,23 +365,50 @@ async function validateProofWithTrashDetection(file: File, imageUrl: string) {
     }
   }
 
-
-
-  // -----------------------------
-  // 4. Save scan
-  // -----------------------------
-  const handleSave = () => {
+  const handleSave = async () => {
     if (result && canSave) {
-      const pointsEarned = 10;
-      const completeScan = {
-        ...result,
-        location,
-        timestamp: scanDateTime,
-        proofOfCleaning,
-        points: pointsEarned
-      };
-      onScanComplete(completeScan);
-      navigate("/");
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user || !user.email) return;
+      try {
+        const docRef = await addDoc(collection(db, "Submission"), {}); 
+        
+        const submissionData = {
+          trashClass: result.category,
+          location: location,
+          timestamp: scanDateTime.toLocaleString(),
+          proofUrl: proofOfCleaning,
+          userId: user?.uid,
+          submissionId: docRef.id,
+        };
+
+        await setDoc(docRef, submissionData);
+
+        console.log("Submission saved with ID:", docRef.id);
+
+        const q = query(collection(db, "User"), where("email", "==", user.email));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const userDoc = snapshot.docs[0];
+          const userData = userDoc.data();
+          const currentPoints = userDoc.data().totalPoints || 0;
+          const currentHistory = userData.History || [];
+
+          await updateDoc(userDoc.ref, {
+            totalPoints: currentPoints + 10,
+            history: [...currentHistory, submissionData]
+          });
+        }
+
+        onScanComplete(submissionData);
+
+        navigate("/");
+
+      } catch (error) {
+        console.error("Error saving submission:", error);
+        alert("Failed to save submission. Try again.");
+      }
     }
   };
 
@@ -759,7 +788,7 @@ async function validateProofWithTrashDetection(file: File, imageUrl: string) {
                     }`}
                   >
                     <Save className="w-5 h-5" />
-                    Save
+                    Submit
                   </button>
                 </div>
 

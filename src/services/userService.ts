@@ -57,7 +57,7 @@ export const createUserIfNotExists = async () => {
     fullName: "Update your name",
     phoneNumber: "Update your phone number",
     createdAt: serverTimestamp(),
-    Medals: [
+    medals: [
       {
         medalID: ironMedalFirestoreID,      // ⭐ Firestore Document ID
         name: ironMedalData.name,
@@ -65,7 +65,7 @@ export const createUserIfNotExists = async () => {
         minPoints: ironMedalData.minPoints,
       },
     ],
-    History: [],
+    history: [],
     totalPoints: 0,
   });
 

@@ -23,8 +23,8 @@ interface UserData {
   nim: string;
   fullName: string;
   phoneNumber: string;
-  Medals: any[];
-  History: HistoryItem[];
+  medals: Medal[];
+  history: HistoryItem[];
   totalPoints: number;
 }
 
@@ -48,7 +48,12 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
       const snapshot = await getDocs(q);
 
       if (!snapshot.empty) {
-        setUserData(snapshot.docs[0].data() as UserData);
+        const data = snapshot.docs[0].data() as UserData;
+        setUserData({
+          ...data,
+          medals: data.medals || [],       // default to empty array
+          history: data.history || [],     // default to empty array
+        });
         setUserDocId(snapshot.docs[0].id);
       }
     };
@@ -74,7 +79,7 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     if (!userData || allMedals.length === 0) return;
 
-    const alreadyOwned = userData.Medals.map(m => m.medalID);
+    const alreadyOwned = userData.medals.map(m => m.medalID) || [];
 
     // Find medals user has reached but not yet earned
     const newlyEarned = allMedals.filter(m =>
@@ -88,7 +93,7 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
         // Update local state UI immediately
         setUserData(prev =>
           prev
-            ? { ...prev, Medals: [...prev.Medals, medal] }
+            ? { ...prev, medals: [...prev.medals, medal] }
             : prev
         );
       });
@@ -135,17 +140,16 @@ export default function Profile({ onLogout }: { onLogout: () => void }) {
     );
   }
 
-  const totalScans = userData.History.length;
   const userPoints = userData.totalPoints;
-  const totalReports = userData.History.length;
+  const totalReports = userData?.history?.length || 0;
 
-  const typeCounts = userData.History.reduce((acc, scan) => {
+  const typeCounts = userData.history.reduce((acc, scan) => {
     acc[scan.type] = (acc[scan.type] || 0) + 1;
     return acc;
   }, {} as { [key: string]: number });
 
   const mostScanned = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
-  const currentMedalLevel = allMedals.filter(m => userPoints >= m.minPoints).length;  
+  const currentMedalLevel = allMedals.filter(m => userPoints >= m.minPoints).length || 0;  
 
   const highestMedal =
   [...allMedals].reverse().find(m => userPoints >= m.minPoints) || allMedals[0];
