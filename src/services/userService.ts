@@ -67,6 +67,7 @@ export const createUserIfNotExists = async () => {
     ],
     history: [],
     totalPoints: 0,
+    claimedRewards: [],
   });
 
   console.log("New user document created:", userIdRef.id);
