@@ -601,8 +601,8 @@ async function validateProofWithTrashDetection(file: File, imageUrl: string) {
                   </div>
 
                   <div className="flex items-center justify-between p-4 bg-green-50 rounded-2xl">
-                    <span className="text-gray-600">Points Earned</span>
-                    <span className="text-[#34A853]">+{result.points ?? 0}</span>
+                    <span className="text-gray-600">Submit your report and clean proof to earn points!</span>
+                    <span className="text-[#34A853]">+10</span>
                   </div>
                 </div>
 

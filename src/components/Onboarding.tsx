@@ -18,8 +18,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     {
       icon: <Camera className="w-24 h-24 text-[#34A853]" />,
       title: 'Scan & Classify',
-      description: 'Simply take a photo of any waste item. Our AI will identify whether it\'s plastic, paper, glass, metal, or organic waste.',
-      categories: ['Plastic', 'Paper', 'Glass', 'Metal', 'Organic', 'E-Waste']
+      description: 'Simply take a photo of any waste item. Our AI will identify whether it\'s plastic, paper, glass, metal, or biodegradable waste.',
+      categories: ['Plastic', 'Paper', 'Glass', 'Metal', 'Organic', 'Cardboard']
     },
     {
       icon: <Award className="w-24 h-24 text-[#34A853]" />,
