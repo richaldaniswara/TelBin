@@ -380,6 +380,7 @@ async function validateProofWithTrashDetection(file: File, imageUrl: string) {
           proofUrl: proofOfCleaning,
           userId: user?.uid,
           submissionId: docRef.id,
+          scannedTrash: capturedImage,
         };
 
         await setDoc(docRef, submissionData);

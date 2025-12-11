@@ -24,7 +24,8 @@ export default function Dashboard({ userPoints, scanHistory }: DashboardProps) {
   const [fullName, setFullName] = useState("");
   const [totalPoints, setTotalPoints] = useState(0);
 
-  const formatTime = (date: Date) => {
+  const formatTime = (timestamp: string | Date) => {
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
