@@ -410,7 +410,7 @@ async function validateProofWithTrashDetection(file: File, imageUrl: string) {
           // Save to Reports collection
           const reportData = {
             ...submissionData,
-            userFullName: userData.fullName || "Unknown",
+            userFullName: userData.fullName === "Update your name" ? userData.userId : userData.fullName || "Unknown",
             highestMedal: highestMedal || null,
           };
 
