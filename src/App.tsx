@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Onboarding from "./components/Onboarding";
 import LoginRegister from "./components/LoginRegister";
@@ -14,14 +14,18 @@ import NotificationContainer, { NotificationItem } from "./components/Notificati
 import MedalSplash from "./components/MedalSplash";
 import MobileViewport from "./components/MobileViewport";
 
-import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase";
+import { onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "firebase/auth";
 
 export default function App() {
+  // --------------------------
   // Global states
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // --------------------------
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(() => {
+    return localStorage.getItem("hasSeenOnboarding") === "true";
+  });
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showMedalSplash, setShowMedalSplash] = useState(false);
   const [medalLevel, setMedalLevel] = useState(1);
@@ -29,17 +33,26 @@ export default function App() {
   // --------------------------
   // ONBOARDING
   // --------------------------
-  const completeOnboarding = () => setHasSeenOnboarding(true);
+  const completeOnboarding = () => {
+    setHasSeenOnboarding(true);
+    localStorage.setItem("hasSeenOnboarding", "true");
+  };
+
+  // --------------------------
+  // SESSION-ONLY AUTH PERSISTENCE
+  // --------------------------
+  useEffect(() => {
+    setPersistence(auth, browserSessionPersistence)
+      .then(() => console.log("Firebase session-only persistence enabled"))
+      .catch((err) => console.error("Error setting session persistence:", err));
+  }, []);
 
   // --------------------------
   // AUTH STATE LISTENER
   // --------------------------
-  // Only used to fetch user info or handle logout
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      // Do not auto-login users
-      // You can still read user info here if needed
-      console.log("Firebase auth state changed, user:", user?.email);
+      setIsLoggedIn(!!user);
     });
     return () => unsubscribe();
   }, []);
