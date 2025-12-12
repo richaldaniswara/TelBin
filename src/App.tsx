@@ -18,7 +18,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase";
 
 export default function App() {
-  // Only global states we still need
+  // Global states
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -27,18 +27,19 @@ export default function App() {
   const [medalLevel, setMedalLevel] = useState(1);
 
   // --------------------------
-  // ONBOARDING (no localStorage)
+  // ONBOARDING
   // --------------------------
-  const completeOnboarding = () => {
-    setHasSeenOnboarding(true);
-  };
+  const completeOnboarding = () => setHasSeenOnboarding(true);
 
   // --------------------------
   // AUTH STATE LISTENER
   // --------------------------
+  // Only used to fetch user info or handle logout
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsLoggedIn(!!user);
+      // Do not auto-login users
+      // You can still read user info here if needed
+      console.log("Firebase auth state changed, user:", user?.email);
     });
     return () => unsubscribe();
   }, []);
@@ -52,7 +53,7 @@ export default function App() {
   };
 
   // --------------------------
-  // NOTIFICATION SYSTEM
+  // NOTIFICATIONS
   // --------------------------
   const addNotification = (
     message: string,
@@ -60,15 +61,13 @@ export default function App() {
   ) => {
     const id = Date.now();
     setNotifications((prev) => [...prev, { id, message, type }]);
-
     setTimeout(() => {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     }, 4000);
   };
 
   // --------------------------
-  // MEDAL SPLASH TRIGGER (optional)
-  // Other components can call this function
+  // MEDAL SPLASH
   // --------------------------
   const triggerMedalSplash = (level: number) => {
     setMedalLevel(level);
@@ -82,18 +81,14 @@ export default function App() {
   if (!isLoggedIn) return <LoginRegister onLogin={() => setIsLoggedIn(true)} />;
 
   // --------------------------
-  // MAIN APP ROUTER
+  // MAIN APP
   // --------------------------
   return (
     <MobileViewport>
       <Router>
         <div className="min-h-screen bg-white pb-20">
           <Routes>
-            <Route
-              path="/"
-              element={<Dashboard addNotification={addNotification} />}
-            />
-
+            <Route path="/" element={<Dashboard addNotification={addNotification} />} />
             <Route
               path="/scan"
               element={
@@ -103,19 +98,9 @@ export default function App() {
                 />
               }
             />
-
             <Route path="/history" element={<History />} />
-
-            <Route
-              path="/rewards"
-              element={<Rewards addNotification={addNotification} />}
-            />
-
-            <Route
-              path="/profile"
-              element={<Profile onLogout={handleLogout} />}
-            />
-
+            <Route path="/rewards" element={<Rewards addNotification={addNotification} />} />
+            <Route path="/profile" element={<Profile onLogout={handleLogout} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
 
@@ -123,16 +108,11 @@ export default function App() {
 
           <NotificationContainer
             notifications={notifications}
-            onRemove={(id) =>
-              setNotifications((prev) => prev.filter((n) => n.id !== id))
-            }
+            onRemove={(id) => setNotifications((prev) => prev.filter((n) => n.id !== id))}
           />
 
           {showMedalSplash && (
-            <MedalSplash
-              medalLevel={medalLevel}
-              onClose={() => setShowMedalSplash(false)}
-            />
+            <MedalSplash medalLevel={medalLevel} onClose={() => setShowMedalSplash(false)} />
           )}
         </div>
       </Router>
